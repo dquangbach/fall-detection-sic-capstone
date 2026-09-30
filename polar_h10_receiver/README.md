@@ -1,6 +1,6 @@
 # Polar H10 → CNN-LSTM trực tiếp
 
-Chạy từ thư mục `Fall_Detection_SIC_Capstone`, bằng môi trường Python đã dùng train:
+Chạy từ thư mục `fall-detection-sic-capstone`, bằng môi trường Python đã dùng train:
 
 ```sh
 ../.venv/bin/python polar_h10_receiver/udp_acc_receiver.py
