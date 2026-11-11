@@ -10,7 +10,11 @@
 		<true/>
 	</dict>
 	<key>NSBluetoothAlwaysUsageDescription</key>
-	<string>Kết nối cảm biến Polar để đọc dữ liệu gia tốc.</string>
+	<string>Kết nối cảm biến Polar để đọc gia tốc và điện tâm đồ ECG.</string>
+	<key>UIFileSharingEnabled</key>
+	<true/>
+	<key>LSSupportsOpeningDocumentsInPlace</key>
+	<true/>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>bluetooth-central</string>

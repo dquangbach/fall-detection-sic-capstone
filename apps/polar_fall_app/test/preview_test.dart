@@ -38,7 +38,18 @@ void main() {
       );
       await tester.tap(find.text('Dừng ACC'));
       await tester.pump();
-      await tester.ensureVisible(find.text('Ngắt kết nối'));
+
+      await tester.scrollUntilVisible(find.text('Bắt đầu ECG & lưu CSV'), 200);
+      await tester.tap(find.text('Bắt đầu ECG & lưu CSV'));
+      await tester.pump();
+      expect(find.textContaining('Tổng mẫu: 260'), findsOneWidget);
+      expect(find.text('Điện thế mới nhất: -3 µV'), findsOneWidget);
+      expect(find.text('Dừng ECG'), findsOneWidget);
+      await tester.tap(find.text('Dừng ECG'));
+      await tester.pump();
+
+      await tester.drag(find.byType(ListView), const Offset(0, 1000));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('Ngắt kết nối'));
       await tester.pump();
       await tester.drag(find.byType(ListView), const Offset(0, 1000));

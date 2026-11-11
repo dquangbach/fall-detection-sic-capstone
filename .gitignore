@@ -5,10 +5,13 @@ env/
 __pycache__/
 *.py[cod]
 .ipynb_checkpoints/
+/.env
 
 # Keep large/local datasets out of the public repository by default
 *.h5
 *.csv
+/ecg/artifacts/
+/ecg-dataset/
 
 # Local reference papers
 /doc/

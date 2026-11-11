@@ -1,0 +1,70 @@
+{
+  "source_model": "saved_models_cnn_lstm/final_model.keras",
+  "tflite_sha256": "08d41a567ffb5b4a3ac445b49dc52970444f8d5f9f16f2ecf49d1da046fa4260",
+  "tflite_bytes": 377560,
+  "feature_cols": [
+    "AccX",
+    "AccY",
+    "AccZ"
+  ],
+  "window_size": 200,
+  "window_step": 100,
+  "decision_threshold": 0.5,
+  "scaler_mean": [
+    0.026643520758056316,
+    -0.721389648181604,
+    -0.011057507271371161
+  ],
+  "scaler_scale": [
+    0.35603689984364256,
+    0.5290964338441696,
+    0.5226090015030364
+  ],
+  "input_shape": [
+    1,
+    200,
+    3
+  ],
+  "input_scale": 0.08806093782186508,
+  "input_zero_point": 0,
+  "output_shape": [
+    1,
+    1
+  ],
+  "output_scale": 0.00390625,
+  "output_zero_point": -128,
+  "operators": [
+    "ADD",
+    "ASSIGN_VARIABLE",
+    "CALL_ONCE",
+    "CONV_2D",
+    "EXPAND_DIMS",
+    "FILL",
+    "FULLY_CONNECTED",
+    "LOGISTIC",
+    "MAX_POOL_2D",
+    "MUL",
+    "PACK",
+    "READ_VARIABLE",
+    "RESHAPE",
+    "SHAPE",
+    "SPLIT",
+    "STRIDED_SLICE",
+    "TANH",
+    "TRANSPOSE",
+    "UNPACK",
+    "VAR_HANDLE"
+  ],
+  "potential_micro_blockers": [
+    "ASSIGN_VARIABLE",
+    "CALL_ONCE",
+    "READ_VARIABLE",
+    "VAR_HANDLE"
+  ],
+  "unrolled_lstm_float_max_difference": 0.0,
+  "comparison_mae": 0.009277481585741043,
+  "comparison_max_abs_error": 0.6881287097930908,
+  "comparison_label_agreement": 0.9921875,
+  "comparison_windows": 256,
+  "note": "Comparison uses K-Fall windows from final model training; not independent validation or LOSO."
+}

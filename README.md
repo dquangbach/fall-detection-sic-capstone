@@ -4,7 +4,7 @@ Project gồm pipeline huấn luyện và đánh giá CNN-LSTM trên K-Fall, ứ
 
 Nếu mới mở project, nên đọc README này trước, sau đó đi theo pipeline tương ứng:
 
-1. Muốn hiểu cách tạo dữ liệu và đánh giá model: đọc [LOSO notebook](model_cnn_lstm_loso.ipynb).
+1. Muốn hiểu cách tạo dữ liệu và đánh giá model: đọc [LOSO notebook](final_model.ipynb).
 2. Muốn chạy dự đoán với Polar H10 qua iPhone và Mac: đọc phần [ứng dụng và server](#5-ứng-dụng-iphone--polar-h10--fastapi).
 3. Muốn chạy hệ thống độc lập trên phần cứng: đọc phần [ESP32-S3](#7-firmware-esp32-s3--mpu6050).
 
@@ -40,8 +40,8 @@ Luồng B dùng `final_model.keras`, scaler và metadata đã xuất ở luồng
 
 ```text
 .
-├── model_cnn_lstm_loso.ipynb       # Pipeline chính: 32 fold LOSO và train model cuối
-├── model_cnn_lstm.ipynb            # Thử nghiệm đối chứng, split cố định, không augmentation
+├── final_model.ipynb                # Pipeline chính: 32 fold LOSO và train model cuối
+├── experiment.ipynb                 # Thử nghiệm đối chứng, split cố định, không augmentation
 ├── kfall/
 │   ├── label_data_new/             # 32 file nhãn SAxx_label.xlsx
 │   └── sensor_data_new/            # CSV cảm biến theo subject (dữ liệu local)
@@ -59,7 +59,7 @@ CSV sensor bị Git ignore, vì vậy một clone mới cần được bổ sung
 
 ## 3. Pipeline huấn luyện từ K-Fall
 
-Nguồn chính thức để hiểu protocol là [model_cnn_lstm_loso.ipynb](model_cnn_lstm_loso.ipynb). Notebook [model_cnn_lstm.ipynb](model_cnn_lstm.ipynb) là thí nghiệm đối chứng split cố định, không phải kết quả LOSO.
+Nguồn chính thức để hiểu protocol là [final_model.ipynb](final_model.ipynb). Notebook [experiment.ipynb](experiment.ipynb) là thí nghiệm đối chứng split cố định, không phải kết quả LOSO.
 
 ### 3.1 Chuẩn bị và gán nhãn dữ liệu
 
@@ -192,7 +192,7 @@ Metadata đang có ghi `AccX/AccY/AccZ`, window 200, step 100, threshold 0.50, 3
 
 ## 4. Notebook đối chứng không augmentation
 
-`model_cnn_lstm.ipynb` dùng sáu subject test cố định `SA21, SA23, SA24, SA26, SA30, SA33`. Seed 42 chọn năm subject validation trong 26 subject còn lại; 21 subject cuối cùng dùng train. Notebook không augmentation, fit scaler trên train, train tối đa 100 epoch và dùng validation để chọn checkpoint/early stopping. Tập test chỉ được dùng để báo cáo cuối. Đây là thí nghiệm đối chứng, không phải protocol 32-fold LOSO.
+`experiment.ipynb` dùng sáu subject test cố định `SA21, SA23, SA24, SA26, SA30, SA33`. Seed 42 chọn năm subject validation trong 26 subject còn lại; 21 subject cuối cùng dùng train. Notebook không augmentation, fit scaler trên train, train tối đa 100 epoch và dùng validation để chọn checkpoint/early stopping. Tập test chỉ được dùng để báo cáo cuối. Đây là thí nghiệm đối chứng, không phải protocol 32-fold LOSO.
 
 ## 5. Ứng dụng iPhone + Polar H10 + FastAPI
 
@@ -216,7 +216,7 @@ Polar H10 --BLE--> Polar SDK (Swift) --EventChannel--> Flutter
 | FastAPI và kiểm tra request | `server/app.py` |
 | Predictor/preprocessing dùng chung với UDP receiver | `polar_h10_receiver/udp_acc_receiver.py` |
 
-iOS target liên kết repository SDK nằm cạnh project tại `AI Projects/polar-ble-sdk` (đường dẫn package `../../../../polar-ble-sdk` tính từ thư mục `ios/`), dùng Swift Package Manager và API Swift Concurrency. App hiện gọi **chỉ ACC**; dù Polar SDK có API ECG, Flutter bridge/UI hiện chưa triển khai đọc ECG. Android cũng chưa có native bridge. README của app ghi commit SDK cần dùng trên máy khác: `3d15da61dd0c63e6be2582d03fd80f6c7ba02e11`.
+iOS target liên kết repository SDK nằm cạnh project tại `AI Projects/polar-ble-sdk` (đường dẫn package `../../../../polar-ble-sdk` tính từ thư mục `ios/`), dùng Swift Package Manager và API Swift Concurrency. App đọc ACC cho model té ngã, đồng thời có chế độ ECG riêng để xem và lưu CSV; xem [hướng dẫn ECG](ecg/README.md). Android chưa có native bridge. README của app ghi commit SDK cần dùng trên máy khác: `3d15da61dd0c63e6be2582d03fd80f6c7ba02e11`.
 
 ### 5.2 Xử lý tín hiệu và API
 
@@ -317,7 +317,7 @@ python -m pip install tensorflow numpy pandas scikit-learn matplotlib joblib ope
 python -m jupyter lab
 ```
 
-Mở `model_cnn_lstm_loso.ipynb`, đặt working directory là gốc repository và chạy theo thứ tự:
+Mở `final_model.ipynb`, đặt working directory là gốc repository và chạy theo thứ tự:
 
 1. Import và đọc 32 file nhãn.
 2. Cấu hình subject, feature và window.

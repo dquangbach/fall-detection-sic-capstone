@@ -1,0 +1,10 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: server/Dockerfile
+    environment:
+      FALL_API_KEY: ${FALL_API_KEY:?Set FALL_API_KEY in .env}
+    ports:
+      - "127.0.0.1:${FALL_HOST_PORT:-8003}:8000"
+    restart: unless-stopped

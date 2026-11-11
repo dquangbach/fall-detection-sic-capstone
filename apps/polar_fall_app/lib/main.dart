@@ -47,9 +47,14 @@ class _PolarPageState extends State<PolarPage> {
   StreamSubscription<dynamic>? _subscription;
   bool _bluetooth = false, _scanning = false, _ready = false;
   bool _streaming = false, _busy = false;
+  String? _streamKind;
   String? _deviceId, _error;
   String _status = 'Chưa kết nối';
   int _rate = 0, _total = 0, _windows = 0;
+  int _ecgRate = 0, _ecgTotal = 0;
+  int? _latestVoltageUv;
+  String? _ecgFileName;
+  final _ecgWave = <int>[];
   AccSample? _latest;
   FallPrediction? _prediction;
   String? _predictionError;
@@ -113,7 +118,7 @@ class _PolarPageState extends State<PolarPage> {
       if (widget.previewState == PolarPreviewState.streaming) {
         _deviceId = 'DEMO1234';
         _ready = true;
-        _status = 'Sẵn sàng đọc ACC';
+        _status = 'Sẵn sàng đọc ACC/ECG';
         _previewAcc();
       }
       return; // Preview never subscribes to the native Bluetooth channel.
@@ -137,7 +142,12 @@ class _PolarPageState extends State<PolarPage> {
   }
 
   void _previewAcc() {
-    _onEvent({'type': 'stream', 'state': 'started', 'sampleRate': 100});
+    _onEvent({
+      'type': 'stream',
+      'state': 'started',
+      'kind': 'acc',
+      'sampleRate': 100,
+    });
     _onEvent({
       'type': 'acc',
       'samples': List.generate(
@@ -163,7 +173,29 @@ class _PolarPageState extends State<PolarPage> {
       case 'startAcc':
         _previewAcc();
       case 'stopAcc':
-        _onEvent({'type': 'stream', 'state': 'stopped'});
+        _onEvent({'type': 'stream', 'state': 'stopped', 'kind': 'acc'});
+      case 'startEcg':
+        _onEvent({
+          'type': 'stream',
+          'state': 'started',
+          'kind': 'ecg',
+          'sampleRate': 130,
+          'fileName': 'preview.csv',
+        });
+        _onEvent({
+          'type': 'ecg',
+          'samples': List.generate(
+            260,
+            (i) => {
+              'timestamp': '${i * 7692308}',
+              'voltageUv': i % 130 == 10
+                  ? 1100
+                  : (i % 130 == 12 ? -320 : ((i % 40) - 20) * 3),
+            },
+          ),
+        });
+      case 'stopEcg':
+        _onEvent({'type': 'stream', 'state': 'stopped', 'kind': 'ecg'});
       case 'stopScan':
         break;
     }
@@ -181,6 +213,7 @@ class _PolarPageState extends State<PolarPage> {
             _ready = false;
             _scanning = false;
             _streaming = false;
+            _streamKind = null;
             _buffer.reset();
           }
         case 'device':
@@ -199,23 +232,35 @@ class _PolarPageState extends State<PolarPage> {
             _endPredictionSession();
             _ready = false;
             _streaming = false;
+            _streamKind = null;
             _buffer.reset();
           }
         case 'ready':
           _ready = true;
-          _status = 'Sẵn sàng đọc ACC';
+          _status = 'Sẵn sàng đọc ACC/ECG';
         case 'stream':
           _streaming = event['state'] == 'started';
+          _streamKind = _streaming ? event['kind'] as String? : null;
           _endPredictionSession();
           _buffer.reset();
           if (_streaming) {
-            _rate = (event['sampleRate'] as num).toInt();
-            _total = 0;
-            _windows = 0;
-            _latest = null;
+            if (_streamKind == 'ecg') {
+              _ecgRate = (event['sampleRate'] as num).toInt();
+              _ecgTotal = 0;
+              _latestVoltageUv = null;
+              _ecgWave.clear();
+              _ecgFileName = event['fileName'] as String?;
+            } else {
+              _rate = (event['sampleRate'] as num).toInt();
+              _total = 0;
+              _windows = 0;
+              _latest = null;
+            }
+          } else if (event['kind'] == 'ecg' && event['fileName'] != null) {
+            _ecgFileName = event['fileName'] as String?;
           }
         case 'acc':
-          if (!_streaming) return;
+          if (!_streaming || _streamKind != 'acc') return;
           for (final rawSample in event['samples'] as List) {
             final sample = AccSample.fromMap(rawSample as Map);
             _latest = sample;
@@ -225,6 +270,18 @@ class _PolarPageState extends State<PolarPage> {
               _windows++;
               _queuePrediction(window);
             }
+          }
+        case 'ecg':
+          if (!_streaming || _streamKind != 'ecg') return;
+          for (final rawSample in event['samples'] as List) {
+            final sample = Map<Object?, Object?>.from(rawSample as Map);
+            final voltage = (sample['voltageUv'] as num).toInt();
+            _latestVoltageUv = voltage;
+            _ecgTotal++;
+            _ecgWave.add(voltage);
+          }
+          if (_ecgWave.length > 650) {
+            _ecgWave.removeRange(0, _ecgWave.length - 650);
           }
         case 'error':
           _error = event['message'] as String?;
@@ -353,10 +410,54 @@ class _PolarPageState extends State<PolarPage> {
             ),
           ),
           FilledButton(
-            onPressed: !_busy && (_streaming || _ready)
+            onPressed:
+                !_busy && (_streamKind == 'acc' || (!_streaming && _ready))
                 ? () => _command(_streaming ? 'stopAcc' : 'startAcc')
                 : null,
-            child: Text(_streaming ? 'Dừng ACC' : 'Bắt đầu ACC'),
+            child: Text(_streamKind == 'acc' ? 'Dừng ACC' : 'Bắt đầu ACC'),
+          ),
+          const Divider(height: 32),
+          Text(
+            'ECG từ Polar',
+            style: Theme.of(context).textTheme.headlineSmall,
+          ),
+          const Text('Một kênh · điện thế µV · tần số lấy từ SDK'),
+          const Text('Thu ECG không cần server; chưa dùng model ECG.'),
+          const SizedBox(height: 12),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Tần số: ${_ecgRate == 0 ? "—" : "$_ecgRate Hz"} · Tổng mẫu: $_ecgTotal',
+                  ),
+                  Text(
+                    'Điện thế mới nhất: ${_latestVoltageUv?.toString() ?? "—"} µV',
+                  ),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    height: 120,
+                    width: double.infinity,
+                    child: CustomPaint(painter: _EcgPainter(_ecgWave)),
+                  ),
+                  if (_ecgFileName != null)
+                    SelectableText(
+                      'CSV trong Files → Polar Fall App: $_ecgFileName',
+                    ),
+                ],
+              ),
+            ),
+          ),
+          FilledButton(
+            onPressed:
+                !_busy && (_streamKind == 'ecg' || (!_streaming && _ready))
+                ? () => _command(_streamKind == 'ecg' ? 'stopEcg' : 'startEcg')
+                : null,
+            child: Text(
+              _streamKind == 'ecg' ? 'Dừng ECG' : 'Bắt đầu ECG & lưu CSV',
+            ),
           ),
           if (_busy) const LinearProgressIndicator(),
           const SizedBox(height: 12),
@@ -364,7 +465,11 @@ class _PolarPageState extends State<PolarPage> {
             'Dự đoán từ laptop',
             style: Theme.of(context).textTheme.titleLarge,
           ),
-          if (widget.previewState != null)
+          if (_streamKind == 'ecg')
+            const Text(
+              'ECG đang được thu và lưu; chưa chạy bộ phân loại AF trên H10.',
+            )
+          else if (widget.previewState != null)
             const Text('Preview dùng dữ liệu mẫu; không gọi server.')
           else if (!FallApi.isConfigured)
             const Text(
@@ -399,9 +504,50 @@ class _PolarPageState extends State<PolarPage> {
               ),
             ),
           const SizedBox(height: 20),
-          const Text('Dữ liệu chỉ được giữ tạm trong bộ nhớ, không ghi file.'),
+          const Text(
+            'ACC chỉ giữ trong bộ nhớ. ECG được lưu thành CSV trên iPhone.',
+          ),
         ],
       ),
     ),
   );
+}
+
+class _EcgPainter extends CustomPainter {
+  const _EcgPainter(this.samples);
+  final List<int> samples;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = size.height / 2;
+    final axis = Paint()
+      ..color = const Color(0xffd0dfe1)
+      ..strokeWidth = 1;
+    canvas.drawLine(Offset(0, center), Offset(size.width, center), axis);
+    if (samples.length < 2) return;
+    var peak = 200;
+    for (final value in samples) {
+      if (value.abs() > peak) peak = value.abs();
+    }
+    final path = Path();
+    for (var i = 0; i < samples.length; i++) {
+      final x = i * size.width / (samples.length - 1);
+      final y = center - samples[i] * (size.height * 0.45 / peak);
+      if (i == 0) {
+        path.moveTo(x, y);
+      } else {
+        path.lineTo(x, y);
+      }
+    }
+    canvas.drawPath(
+      path,
+      Paint()
+        ..color = const Color(0xff087f8c)
+        ..strokeWidth = 1.5
+        ..style = PaintingStyle.stroke,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _EcgPainter oldDelegate) => true;
 }
